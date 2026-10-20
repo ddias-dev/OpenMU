@@ -4,6 +4,7 @@
 
 namespace MUnique.OpenMU.Persistence.InMemory;
 
+using System.Threading;
 using MUnique.OpenMU.Persistence.BasicModel;
 
 /// <summary>
@@ -11,10 +12,21 @@ using MUnique.OpenMU.Persistence.BasicModel;
 /// </summary>
 public class InMemoryRepositoryProvider : BaseRepositoryProvider
 {
+    private readonly Lock _repositoryLock = new();
+
     /// <summary>
     /// Gets all <see cref="IMemoryRepository"/> which were added to this manager.
     /// </summary>
-    internal IEnumerable<IMemoryRepository> MemoryRepositories => base.Repositories.Values.OfType<IMemoryRepository>();
+    internal IEnumerable<IMemoryRepository> MemoryRepositories
+    {
+        get
+        {
+            lock (this._repositoryLock)
+            {
+                return base.Repositories.Values.OfType<IMemoryRepository>().ToArray();
+            }
+        }
+    }
 
     /// <summary>
     /// Gets the memory repository, and creates it if it wasn't created yet.
@@ -24,8 +36,11 @@ public class InMemoryRepositoryProvider : BaseRepositoryProvider
     public new IRepository<T> GetRepository<T>()
         where T : class
     {
-        var repository = this.InternalGetRepository(typeof(T)) ?? this.CreateAndRegisterMemoryRepository(typeof(T));
-        return new InMemoryRepositoryAdapter<T>((IMemoryRepository)repository);
+        lock (this._repositoryLock)
+        {
+            var repository = this.InternalGetRepository(typeof(T)) ?? this.CreateAndRegisterMemoryRepository(typeof(T));
+            return new InMemoryRepositoryAdapter<T>((IMemoryRepository)repository);
+        }
     }
 
     /// <summary>
@@ -35,9 +50,12 @@ public class InMemoryRepositoryProvider : BaseRepositoryProvider
     /// <returns>The repository of the specified type.</returns>
     public new IRepository GetRepository(Type objectType)
     {
-        var repository = this.InternalGetRepository(objectType) ?? this.CreateAndRegisterMemoryRepository(objectType);
+        lock (this._repositoryLock)
+        {
+            var repository = this.InternalGetRepository(objectType) ?? this.CreateAndRegisterMemoryRepository(objectType);
 
-        return repository;
+            return repository;
+        }
     }
 
     private IRepository CreateAndRegisterMemoryRepository(Type type)

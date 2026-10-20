@@ -213,7 +213,7 @@ public class MapInitializer : IMapInitializer
         else if (monsterDef.MerchantStore is not null)
         {
             this._logger.LogDebug("Creating merchant npc {spawn}", spawnArea);
-            npc = new MerchantNpc(spawnArea, monsterDef, createdMap);
+            npc = new MerchantNpc(spawnArea, monsterDef, createdMap, this._configuration);
         }
         else
         {

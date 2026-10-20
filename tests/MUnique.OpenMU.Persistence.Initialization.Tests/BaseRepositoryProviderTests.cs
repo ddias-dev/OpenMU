@@ -5,6 +5,9 @@
 namespace MUnique.OpenMU.Persistence.Initialization.Tests;
 
 using System.Threading;
+using MUnique.OpenMU.DataModel.Entities;
+using MUnique.OpenMU.Persistence.InMemory;
+using BasicModel = MUnique.OpenMU.Persistence.BasicModel;
 using Moq;
 
 /// <summary>
@@ -36,6 +39,33 @@ public class BaseRepositoryProviderTests
 
         Assert.That(provider.InitializationCount, Is.EqualTo(1));
         Assert.That(repositories, Has.All.Not.Null);
+    }
+
+    /// <summary>
+    /// Tests that concurrent first accesses create one in-memory repository for an entity.
+    /// </summary>
+    [Test]
+    public async Task ConcurrentFirstAccessesCreateOneMemoryRepositoryAsync()
+    {
+        var provider = new InMemoryRepositoryProvider();
+        using var start = new ManualResetEventSlim();
+        var accesses = Enumerable.Range(0, 32)
+            .Select(_ => Task.Run(() =>
+            {
+                start.Wait();
+                return provider.GetRepository<CastleSiegeGuildRegistration>();
+            }))
+            .ToList();
+
+        start.Set();
+        var repositories = await Task.WhenAll(accesses).ConfigureAwait(false);
+
+        Assert.That(repositories, Has.All.Not.Null);
+        var registration = new BasicModel.CastleSiegeGuildRegistration { Id = Guid.NewGuid() };
+        ((IMemoryRepository)repositories[0]).Add(registration.Id, registration);
+        Assert.That(
+            await repositories[^1].GetByIdAsync(registration.Id).ConfigureAwait(false),
+            Is.SameAs(registration));
     }
 
     private sealed class SlowlyInitializingRepositoryProvider : BaseRepositoryProvider

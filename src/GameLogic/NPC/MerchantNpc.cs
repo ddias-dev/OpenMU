@@ -4,6 +4,8 @@
 
 namespace MUnique.OpenMU.GameLogic.NPC;
 
+using MUnique.OpenMU.DataModel.Configuration;
+
 /// <summary>
 /// The implemented class of a merchant, which is a non-player-character which
 /// can be observed by players and has a storage for items which are offered to sell.
@@ -16,12 +18,19 @@ public class MerchantNpc : NonPlayerCharacter
     /// <param name="spawnInfo">The spawn information.</param>
     /// <param name="stats">The stats.</param>
     /// <param name="map">The map on which this instance will spawn.</param>
-    public MerchantNpc(MonsterSpawnArea spawnInfo, MonsterDefinition stats, GameMap map)
+    /// <param name="gameConfiguration">The game configuration.</param>
+    public MerchantNpc(
+        MonsterSpawnArea spawnInfo,
+        MonsterDefinition stats,
+        GameMap map,
+        GameConfiguration gameConfiguration)
         : base(spawnInfo, stats, map)
     {
         ArgumentNullException.ThrowIfNull(stats.MerchantStore, nameof(stats.MerchantStore));
 
-        this.MerchantStorage = new Storage(InventoryConstants.RowSize * InventoryConstants.WarehouseRows, stats.MerchantStore);
+        this.MerchantStorage = new Storage(
+            InventoryConstants.RowSize * InventoryConstants.WarehouseRows,
+            stats.MerchantStore.Clone(gameConfiguration));
     }
 
     /// <summary>
